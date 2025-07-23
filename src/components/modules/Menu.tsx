@@ -36,7 +36,6 @@ export function Menu() {
   const [editForm, setEditForm] = useState({ name: '', price: '', category: '', recipe: '' });
   const [editRecipe, setEditRecipe] = useState<Ingredient[]>([]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [pendingEditSave, setPendingEditSave] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
@@ -56,7 +55,6 @@ export function Menu() {
     // If recipe changed, require password
     if (editingItem && JSON.stringify(editingItem.recipe || []) !== JSON.stringify(editRecipe)) {
       setShowPasswordModal(true);
-      setPendingEditSave(true);
       return;
     }
     await doEditSave();
@@ -73,7 +71,6 @@ export function Menu() {
     });
     setShowEditModal(false);
     setEditingItem(null);
-    setPendingEditSave(false);
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {

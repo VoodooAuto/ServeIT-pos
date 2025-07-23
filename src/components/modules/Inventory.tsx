@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PlusIcon, PencilIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { Table } from '../ui/Table';
 import { Badge } from '../ui/Badge';
@@ -6,7 +6,6 @@ import { Modal } from '../ui/Modal';
 import { db } from '../../utils/firebase';
 import { collection, onSnapshot, addDoc } from 'firebase/firestore';
 import type { InventoryItem } from '../../types';
-import { uploadMenuItemsFromCSV } from '../../utils/csvMenuUpload';
 
 export function Inventory() {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -108,30 +107,6 @@ export function Inventory() {
     
     setItems(items.map(item => item.id === editingItem.id ? updatedItem : item));
     setEditingItem(null);
-  };
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const handleBulkUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const csvString = event.target?.result as string;
-      try {
-        const result = await uploadMenuItemsFromCSV(csvString);
-        alert(`Bulk upload complete!\nSuccess: ${result.success}\nFailed: ${result.failed}`);
-      } catch (err) {
-        alert('Bulk upload failed: ' + (err as Error).message);
-      }
-    };
-    reader.readAsText(file);
-    // Reset input so the same file can be uploaded again if needed
-    e.target.value = '';
   };
 
   return (

@@ -6,15 +6,12 @@ import { Table } from '../ui/Table';
 import { db } from '../../utils/firebase';
 import { collection, query, orderBy, limit, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { createPortal } from 'react-dom';
-import { useEstablishmentType } from '../../utils/establishmentType';
 
 export function Invoices() {
-  const establishmentType = useEstablishmentType();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [showPrintModal, setShowPrintModal] = useState(false);
-  const [printInvoice, setPrintInvoice] = useState<any>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'invoices'), orderBy('date', 'desc'), limit(15));
@@ -249,43 +246,7 @@ export function Invoices() {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Recent Invoices</h3>
         </div>
-        <Table columns={columns} data={invoices}>
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 font-semibold uppercase tracking-wide text-xs text-gray-600">Invoice #</th>
-              <th className="px-4 py-2 font-semibold uppercase tracking-wide text-xs text-gray-600">Date</th>
-              <th className="px-4 py-2 font-semibold uppercase tracking-wide text-xs text-gray-600">Total</th>
-              <th className="px-4 py-2 font-semibold uppercase tracking-wide text-xs text-gray-600">Status</th>
-              <th className="px-4 py-2 font-semibold uppercase tracking-wide text-xs text-gray-600">Payment</th>
-              <th className="px-4 py-2 font-semibold uppercase tracking-wide text-xs text-gray-600">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoices.map((invoice, index) => (
-              <tr key={invoice.id} className="hover:bg-gray-50">
-                <td className="px-4 py-2">{invoice.invoiceNumber}</td>
-                <td className="px-4 py-2">{invoice.date?.toDate ? invoice.date.toDate().toLocaleDateString() : ''}</td>
-                <td className="px-4 py-2 text-right">₹{invoice.total.toFixed(2)}</td>
-                <td className="px-4 py-2">
-                  <Badge variant={invoice.status === 'paid' ? 'success' : 'warning'}>{invoice.status}</Badge>
-                </td>
-                <td className="px-4 py-2">{invoice.paymentMethod}</td>
-                <td className="px-4 py-2">
-                  <div className="flex gap-2">
-                    <button className="btn btn-secondary btn-sm flex items-center rounded-lg shadow hover:bg-blue-100 transition" onClick={() => handlePrintInvoice(invoice)}>
-                      <PrinterIcon className="h-4 w-4 mr-1" /> Print
-                    </button>
-                    {invoice.status === 'pending' && (
-                      <button className="btn btn-success btn-sm flex items-center rounded-lg shadow hover:bg-green-100 transition" onClick={() => markInvoiceAsPaid(invoice.id)}>
-                        Mark as Paid
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+        <Table columns={columns} data={invoices} />
       </div>
 
       {/* Create Invoice Modal */}
@@ -429,8 +390,8 @@ export function Invoices() {
         )}
       </Modal>
 
-      {showPrintModal && printInvoice && createPortal((() => {
-        const subtotal = printInvoice.items?.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) || 0;
+      {showPrintModal && createPortal((() => {
+        const subtotal = selectedInvoice?.items?.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) || 0;
         const gst = subtotal * 0.05;
         const total = subtotal + gst;
         return (
@@ -447,8 +408,8 @@ export function Invoices() {
                 </div>
               </div>
               <div className="flex justify-between text-xs mb-2">
-                <span>Bill No: {printInvoice.invoiceNumber}</span>
-                <span>Date: {printInvoice.date?.toDate ? printInvoice.date.toDate().toLocaleDateString() : ''}</span>
+                <span>Bill No: {selectedInvoice?.invoiceNumber}</span>
+                <span>Date: {selectedInvoice?.date?.toDate ? selectedInvoice.date.toDate().toLocaleDateString() : ''}</span>
               </div>
               <div className="flex justify-between text-xs mb-2">
                 <span>Operator: {restaurantInfo.operator}</span>
@@ -464,7 +425,7 @@ export function Invoices() {
                   </tr>
                 </thead>
                 <tbody>
-                  {printInvoice.items?.map((item: any, idx: number) => (
+                  {selectedInvoice?.items?.map((item: any, idx: number) => (
                     <tr key={idx}>
                       <td>{idx + 1}</td>
                       <td>{item.name || item.menuItem?.name}</td>

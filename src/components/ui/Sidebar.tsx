@@ -6,12 +6,10 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
 import GroupIcon from '@mui/icons-material/Group';
-import SettingsIcon from '@mui/icons-material/Settings';
 import StoreIcon from '@mui/icons-material/Store';
 import AnalyticsIcon from '@mui/icons-material/BarChart';
 import TaskIcon from '@mui/icons-material/Task';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import { cn } from '../../utils/cn';
 
 const drawerWidth = 240;
 
@@ -26,7 +24,7 @@ const menuItems = [
   { id: 'tasks', label: 'Tasks & Ops', icon: <TaskIcon /> },
 ];
 
-export function Sidebar({ activeModule, onModuleChange, userRole }: { activeModule: string, onModuleChange: (id: string) => void, userRole: string | null }) {
+export function Sidebar({ activeModule, onModuleChange }: { activeModule: string, onModuleChange: (id: string) => void }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = React.useState(false);

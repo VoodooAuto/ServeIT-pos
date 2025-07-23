@@ -8,7 +8,6 @@ import { Modal } from '../ui/Modal';
 
 export function Settings({ userRole }: { userRole: string | null }) {
   const [activeTab, setActiveTab] = useState('restaurant');
-  const [showUserModal, setShowUserModal] = useState(false);
   const [userMsg, setUserMsg] = useState<string | null>(null);
 
   const tabs = [
@@ -35,7 +34,7 @@ export function Settings({ userRole }: { userRole: string | null }) {
             const form = e.target as HTMLFormElement;
             let email = form.username.value.trim();
             const password = form.password.value;
-            const role = form.role.value;
+            const role = form.role as string;
             if (!email.includes('@')) {
               email = `${email}@khilao.com`;
             }

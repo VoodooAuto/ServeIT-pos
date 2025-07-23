@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from './components/ui/Sidebar';
 import { Dashboard } from './components/modules/Dashboard';
 import { POS } from './components/modules/POS';
@@ -12,24 +12,37 @@ import { Settings } from './components/modules/Settings';
 import { Menu } from './components/modules/Menu';
 import { EstablishmentTypeProvider } from './utils/establishmentType';
 import { SignIn } from './components/ui/SignIn';
+
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import { db } from './utils/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 
+type CartItem = {
+  menuItem: {
+    name: string;
+    price: number;
+  };
+  quantity: number;
+  price?: number;
+};
+
 function App() {
-  // Set initial activeModule from hash if present
-  const getModuleFromHash = () => {
+  const [activeModule, setActiveModule] = useState<string>(() => {
     const hash = window.location.hash.replace(/^#\/?/, '');
     return hash || 'dashboard';
-  };
-  const [activeModule, setActiveModule] = useState(getModuleFromHash());
+  });
+
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState('');
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
   const auth = getAuth();
 
+  // Load Auth User
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
@@ -43,6 +56,7 @@ function App() {
     return () => unsub();
   }, [auth]);
 
+  // Fetch Restaurant Name
   useEffect(() => {
     async function fetchRestaurantName() {
       const ref = doc(db, 'settings', 'restaurant');
@@ -54,28 +68,51 @@ function App() {
     fetchRestaurantName();
   }, []);
 
-  // Listen for hash changes to support navigation from StatCard clicks
+  // React to URL hash change
   useEffect(() => {
-    const onHashChange = () => {
-      setActiveModule(getModuleFromHash());
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace(/^#\/?/, '');
+      setActiveModule(hash || 'dashboard');
     };
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  // Sign out
   const handleSignOut = async () => {
     await signOut(auth);
     setUser(null);
     setUserRole(null);
   };
 
+  // ➕ Add item to cart
+  const addToCart = useCallback((item: CartItem) => {
+    setCartItems((prev) => {
+      const existing = prev.find((i) => i.menuItem.name === item.menuItem.name);
+      if (existing) {
+        return prev.map((i) =>
+          i.menuItem.name === item.menuItem.name
+            ? { ...i, quantity: i.quantity + item.quantity }
+            : i
+        );
+      } else {
+        return [...prev, item];
+      }
+    });
+  }, []);
+
+  // Show Sign In if not logged in
   if (!user) {
     return <SignIn onSignIn={() => setUser(getAuth().currentUser)} />;
   }
 
-  // Add loading state for userRole
+  // Show loading while role is being fetched
   if (user && userRole === null) {
-    return <div className="flex items-center justify-center h-screen text-xl font-semibold">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen text-xl font-semibold">
+        Loading...
+      </div>
+    );
   }
 
   const renderModule = () => {
@@ -83,7 +120,7 @@ function App() {
       case 'dashboard':
         return <Dashboard />;
       case 'pos':
-        return <POS />;
+        return <POS items={cartItems} addToCart={addToCart} />;
       case 'menu':
         return <Menu />;
       case 'inventory':
@@ -108,13 +145,18 @@ function App() {
   return (
     <EstablishmentTypeProvider>
       <div className="flex h-screen bg-gray-50">
-        <Sidebar activeModule={activeModule} onModuleChange={setActiveModule} userRole={userRole} />
+        <Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />
+
         <div className="flex-1 flex flex-col min-h-screen">
-          {/* Top App Bar (fixed at the top) */}
-          <div className="w-full px-6 py-3 flex items-center justify-between bg-gradient-to-r from-blue-600 to-purple-600 shadow text-white z-20" style={{ position: 'sticky', top: 0 }}>
+          {/* Top App Bar */}
+          <div
+            className="w-full px-6 py-3 flex items-center justify-between bg-gradient-to-r from-blue-600 to-purple-600 shadow text-white z-20"
+            style={{ position: 'sticky', top: 0 }}
+          >
             <div className="flex-1 text-lg font-semibold text-center">
               {restaurantName}
             </div>
+
             <div className="flex items-center gap-2">
               <button
                 className="flex items-center gap-1 px-3 py-1 rounded-lg bg-white text-blue-700 font-semibold shadow hover:bg-blue-50 transition"
@@ -128,17 +170,18 @@ function App() {
                 onClick={handleSignOut}
                 title="Log Out"
               >
-                <LogoutIcon fontSize="small" /> Log Out
+                <LogoutIcon fontSize="small" />
+                Log Out
               </button>
             </div>
           </div>
-          {/* Main Content Area: always three columns for POS, fallback to single for others */}
+
+          {/* Main Content Area */}
           <div className="flex-1 overflow-auto">
             <div className={activeModule === 'pos' ? 'h-full flex flex-col' : ''}>
               {activeModule === 'pos' ? (
                 <div className="flex flex-1 h-full w-full gap-4 p-6 pt-4">
-                  {/* The POS module itself should render its three columns as children here */}
-                  <POS />
+                  <POS items={cartItems} addToCart={addToCart} />
                 </div>
               ) : (
                 <div className="p-6 pt-4">{renderModule()}</div>

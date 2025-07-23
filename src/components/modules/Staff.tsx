@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react';
-import { PlusIcon, ClockIcon, UserIcon, PhoneIcon } from '@heroicons/react/24/outline';
-import { Table } from '../ui/Table';
-import { Badge } from '../ui/Badge';
 import { Modal } from '../ui/Modal';
 import { db } from '../../utils/firebase';
-import { collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, query, where, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, doc, updateDoc, query, where, Timestamp } from 'firebase/firestore';
 import type { Staff as StaffType } from '../../types';
-import { ADMIN_PASSWORD } from '../../utils/config';
 
 const mockStaff: StaffType[] = [
   { id: '1', name: 'Amit Kumar', role: 'cashier', phone: '9876543210', email: 'amit@example.com', salary: 15000, joinDate: new Date('2023-01-01'), status: 'active' },
@@ -91,106 +87,6 @@ export function Staff({ userRole }: { userRole: string | null }) {
     });
     setPayroll(payroll.map(p => p.id === staffId ? { ...p, paid: true } : p));
   };
-
-  const columns = [
-    { 
-      key: 'name', 
-      label: 'Name',
-      render: (_value: string, row: StaffType) => (
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-            <UserIcon className="h-5 w-5 text-primary-600" />
-          </div>
-          <span className="font-medium">{row.name}</span>
-        </div>
-      )
-    },
-    { key: 'role', label: 'Role' },
-    { 
-      key: 'phone', 
-      label: 'Phone',
-      render: (value: string) => (
-        <div className="flex items-center space-x-2">
-          <PhoneIcon className="h-4 w-4 text-gray-400" />
-          <span>{value}</span>
-        </div>
-      )
-    },
-    { 
-      key: 'salary', 
-      label: 'Salary',
-      render: (value: number) => `₹${value.toLocaleString()}`
-    },
-    { 
-      key: 'status', 
-      label: 'Status',
-      render: (value: string) => (
-        <Badge variant={value === 'active' ? 'success' : 'error'}>
-          {value}
-        </Badge>
-      )
-    },
-    { 
-      key: 'attendance', 
-      label: 'Today',
-      render: (_value: any, row: StaffType) => (
-        <div className="flex items-center space-x-2">
-          <ClockIcon className="h-4 w-4 text-gray-400" />
-          <span className="text-sm">
-            {row.attendanceToday?.clockIn
-              ? new Date(row.attendanceToday.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : 'Not clocked in'}
-          </span>
-        </div>
-      )
-    },
-    { 
-      key: 'actions', 
-      label: 'Actions',
-      render: (_value: any, row: StaffType) => (
-        <div className="flex space-x-2">
-          {userRole === 'manager' && (
-            <button
-              onClick={() => {
-                const password = window.prompt('Enter admin password to proceed:');
-                if (password !== ADMIN_PASSWORD) {
-                  alert('Incorrect password. Action cancelled.');
-                  return;
-                }
-                setSelectedStaff(row);
-                setShowAddModal(true);
-              }}
-              className="p-1 rounded hover:bg-blue-100 text-blue-600 font-semibold"
-              title="Edit"
-            >
-              Edit
-            </button>
-          )}
-          <button
-            onClick={async () => {
-              const password = window.prompt('Enter admin password to proceed:');
-              if (password !== ADMIN_PASSWORD) {
-                alert('Incorrect password. Action cancelled.');
-                return;
-              }
-              if (window.confirm('Are you sure you want to delete this staff member?')) {
-                try {
-                  await deleteDoc(doc(db, 'staff', row.id));
-                  alert('Staff deleted successfully!');
-                } catch (err) {
-                  alert('Failed to delete staff: ' + (err as Error).message);
-                }
-              }
-            }}
-            className="p-1 rounded hover:bg-red-100 text-red-600 font-semibold"
-            title="Delete"
-          >
-            Delete
-          </button>
-        </div>
-      )
-    },
-  ];
 
   const addOrEditStaff = async (formData: any) => {
     try {

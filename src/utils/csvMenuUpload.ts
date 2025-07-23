@@ -15,7 +15,7 @@ export async function uploadMenuItemsFromCSV(csvString: string) {
           reject(err);
         }
       },
-      error: (err: Papa.ParseError) => reject(err),
+      error: (error: Error) => reject(error),
     });
   });
 } 

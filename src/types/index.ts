@@ -39,6 +39,8 @@ export interface User {
     notes?: string;
     total: number;
     category?: string;
+    name?: string; // Add for compatibility
+    price?: number; // Add for compatibility
   }
   
   export interface Order {

@@ -1,109 +1,110 @@
-import { useState, useEffect } from 'react';
-import { Grid, Card, CardContent, Typography, Box, ButtonBase } from '@mui/material';
+import { useEffect, useState } from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Grid,
+  ButtonBase,
+} from '@mui/material';
+
 import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import UserGroupIcon from '@mui/icons-material/Group';
-import BuildingStorefrontIcon from '@mui/icons-material/Store';
-import ClipboardDocumentListIcon from '@mui/icons-material/Assignment';
-import ExclamationTriangleIcon from '@mui/icons-material/WarningAmber';
-import { StatCard } from '../ui/StatCard';
+import GroupIcon from '@mui/icons-material/Group';
+import StoreIcon from '@mui/icons-material/Store';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import WarningIcon from '@mui/icons-material/Warning';
+
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+
 import { Table } from '../ui/Table';
 import { Badge } from '../ui/Badge';
-import { mockDashboardStats, mockSalesData, mockTasks } from '../../utils/mockData';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  Timestamp,
+  getDocs,
+  onSnapshot,
+} from 'firebase/firestore';
 import { db } from '../../utils/firebase';
-import { collection, onSnapshot, query, where, orderBy, limit, Timestamp, getDocs } from 'firebase/firestore';
+
 import { useEstablishmentType } from '../../utils/establishmentType';
-// Try to import useNavigate, fallback to undefined if not available
-let useNavigate: any = undefined;
-try {
-  // @ts-ignore
-  useNavigate = require('react-router-dom').useNavigate;
-} catch {}
+
+const useNavigate = () => {
+  try {
+    return require('react-router-dom').useNavigate();
+  } catch {
+    return (path: string) => (window.location.hash = `#${path}`);
+  }
+};
 
 export function Dashboard() {
-  // --- Real-time stats state ---
+  const navigate = useNavigate();
+  const establishmentType = useEstablishmentType();
+
   const [stats, setStats] = useState({
     todaySales: 0,
     todayOrders: 0,
     activeStaff: 0,
-    availableTables: 3, // mock for now
+    availableTables: 4,
     pendingTasks: 0,
     lowStockItems: 0,
   });
 
-  const establishmentType = useEstablishmentType();
-  const navigate = typeof useNavigate === 'function' ? useNavigate() : null;
-
-  // Navigation handlers
-  const goTo = (module: string) => {
-    if (navigate) {
-      navigate(`/${module}`);
-    } else {
-      window.location.hash = `#/${module}`;
-    }
+  const goTo = (path: string) => {
+    navigate(`/${path}`);
   };
 
   useEffect(() => {
-    // Today's date string (YYYY-MM-DD)
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const startTimestamp = Timestamp.fromDate(startOfDay);
 
-    // --- Today's Sales & Orders ---
-    const unsubInvoices = onSnapshot(
+    const invoiceUnsub = onSnapshot(
       query(collection(db, 'invoices'), where('date', '>=', startTimestamp)),
       (snapshot) => {
-        let totalSales = 0;
-        let orderCount = 0;
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          totalSales += data.total || 0;
-          orderCount++;
+        let total = 0;
+        snapshot.forEach((doc) => {
+          total += doc.data().total || 0;
         });
-        setStats(prev => ({ ...prev, todaySales: totalSales, todayOrders: orderCount }));
+        setStats((prev) => ({ ...prev, todaySales: total, todayOrders: snapshot.size }));
       }
     );
 
-    // --- Active Staff ---
-    const unsubStaff = onSnapshot(
+    const staffUnsub = onSnapshot(
       query(collection(db, 'staff'), where('status', '==', 'active')),
       (snapshot) => {
-        setStats(prev => ({ ...prev, activeStaff: snapshot.size }));
+        setStats((prev) => ({ ...prev, activeStaff: snapshot.size }));
       }
     );
 
-    // --- Pending Tasks ---
-    const unsubTasks = onSnapshot(
+    const taskUnsub = onSnapshot(
       query(collection(db, 'tasks'), where('status', '==', 'pending')),
       (snapshot) => {
-        setStats(prev => ({ ...prev, pendingTasks: snapshot.size }));
+        setStats((prev) => ({ ...prev, pendingTasks: snapshot.size }));
       }
     );
 
-    // --- Low Stock Items ---
-    const unsubIngredients = onSnapshot(
-      collection(db, 'ingredients'),
-      (snapshot) => {
-        let lowStockCount = 0;
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          if (typeof data.quantity === 'number' && typeof data.lowStockThreshold === 'number') {
-            if (data.quantity <= data.lowStockThreshold) {
-              lowStockCount++;
-            }
-          }
-        });
-        setStats(prev => ({ ...prev, lowStockItems: lowStockCount }));
-      }
-    );
+    const stockUnsub = onSnapshot(collection(db, 'ingredients'), (snapshot) => {
+      let lowStockCount = 0;
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.quantity <= data.lowStockThreshold) {
+          lowStockCount++;
+        }
+      });
+      setStats((prev) => ({ ...prev, lowStockItems: lowStockCount }));
+    });
 
-    // Cleanup
     return () => {
-      unsubInvoices();
-      unsubStaff();
-      unsubTasks();
-      unsubIngredients();
+      invoiceUnsub();
+      staffUnsub();
+      taskUnsub();
+      stockUnsub();
     };
   }, []);
 
@@ -111,221 +112,183 @@ export function Dashboard() {
   const [ordersChart, setOrdersChart] = useState<any[]>([]);
   const [recentTasks, setRecentTasks] = useState<any[]>([]);
 
-  // Fetch last 7 days sales/orders for charts
   useEffect(() => {
-    async function fetchSalesOrders() {
+    const fetch = async () => {
       const today = new Date();
-      today.setHours(0, 0, 0, 0); // midnight today
       const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
-      const endOfToday = new Date(today);
-      endOfToday.setHours(23, 59, 59, 999);
+      const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
       const q = query(
         collection(db, 'invoices'),
         where('date', '>=', Timestamp.fromDate(start)),
-        where('date', '<=', Timestamp.fromDate(endOfToday))
+        where('date', '<=', Timestamp.fromDate(end))
       );
+
       const snap = await getDocs(q);
-      const dayMap = new Map();
+
+      const result: any = {};
       for (let i = 0; i < 7; i++) {
-        const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
-        const key = d.toISOString().slice(0, 10);
-        dayMap.set(key, { date: key, sales: 0, orders: 0 });
+        const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+        const key = date.toISOString().split('T')[0];
+        result[key] = { date: key, sales: 0, orders: 0 };
       }
-      snap.forEach(doc => {
+
+      snap.forEach((doc) => {
         const data = doc.data();
-        const d = data.date?.toDate ? data.date.toDate() : new Date(data.date);
-        d.setHours(0, 0, 0, 0); // normalize to local midnight
-        const key = d.toISOString().slice(0, 10);
-        if (dayMap.has(key)) {
-          dayMap.get(key).sales += data.total || 0;
-          dayMap.get(key).orders += 1;
+        const d = data.date.toDate ? data.date.toDate() : new Date(data.date);
+        const key = d.toISOString().split('T')[0];
+        if (result[key]) {
+          result[key].sales += data.total || 0;
+          result[key].orders += 1;
         }
       });
-      const arr = Array.from(dayMap.values());
-      setSalesChart(arr);
-      setOrdersChart(arr);
-    }
-    fetchSalesOrders();
+
+      const values = Object.values(result);
+      setSalesChart(values);
+      setOrdersChart(values);
+    };
+
+    fetch();
   }, []);
 
-  // Fetch 3 most recent tasks
   useEffect(() => {
     const q = query(collection(db, 'tasks'), orderBy('createdAt', 'desc'), limit(3));
     const unsub = onSnapshot(q, (snapshot) => {
-      setRecentTasks(snapshot.docs.map(doc => doc.data()));
+      const tasks = snapshot.docs.map((doc) => doc.data());
+      setRecentTasks(tasks);
     });
     return () => unsub();
   }, []);
 
-  // --- Keep the rest of the dashboard as is for now ---
   const taskColumns = [
     { key: 'title', label: 'Task' },
     { key: 'assignedTo', label: 'Assigned To' },
-    { 
-      key: 'priority', 
+    {
+      key: 'priority',
       label: 'Priority',
-      render: (value: string) => (
-        <Badge variant={value === 'high' ? 'error' : value === 'medium' ? 'warning' : 'gray'}>
-          {value}
-        </Badge>
-      )
+      render: (value: string) => <Badge>{value}</Badge>,
     },
-    { 
-      key: 'status', 
+    {
+      key: 'status',
       label: 'Status',
-      render: (value: string) => (
-        <Badge variant={value === 'completed' ? 'success' : value === 'in-progress' ? 'warning' : 'gray'}>
-          {value}
-        </Badge>
-      )
+      render: (value: string) => <Badge>{value}</Badge>,
     },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Tailwind Test Card Removed */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">Dashboard</h1>
-        <div className="flex items-center space-x-2 text-sm text-gray-500">
-          <span>Last updated: {new Date().toLocaleTimeString()}</span>
-          <div className="w-2 h-2 bg-success-500 rounded-full animate-pulse"></div>
-        </div>
-      </div>
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h4" fontWeight="bold">
+        Dashboard
+      </Typography>
 
-      {/* MUI Stats Grid */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Card sx={{ boxShadow: 3, width: '100%' }}>
-            <ButtonBase onClick={() => goTo('billing')} sx={{ width: '100%', display: 'block', textAlign: 'left' }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <CurrencyRupeeIcon color="primary" fontSize="large" />
-                  <Box>
-                    <Typography variant="subtitle2" color="textSecondary">Today's Sales</Typography>
-                    <Typography variant="h5" color="primary">₹{stats.todaySales.toLocaleString()}</Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </ButtonBase>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Card sx={{ boxShadow: 3, width: '100%' }}>
-            <ButtonBase onClick={() => goTo('billing')} sx={{ width: '100%', display: 'block', textAlign: 'left' }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <ShoppingCartIcon color="primary" fontSize="large" />
-                  <Box>
-                    <Typography variant="subtitle2" color="textSecondary">Orders</Typography>
-                    <Typography variant="h5" color="primary">{stats.todayOrders}</Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </ButtonBase>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Card sx={{ boxShadow: 3, width: '100%' }}>
-            <ButtonBase onClick={() => goTo('staff')} sx={{ width: '100%', display: 'block', textAlign: 'left' }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <UserGroupIcon color="primary" fontSize="large" />
-                  <Box>
-                    <Typography variant="subtitle2" color="textSecondary">Active Staff</Typography>
-                    <Typography variant="h5" color="primary">{stats.activeStaff}</Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </ButtonBase>
-          </Card>
-        </Grid>
-        {establishmentType !== 'QSR' && (
-          <Grid item xs={12} sm={6} md={4} lg={2}>
-            <Card sx={{ boxShadow: 3 }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <BuildingStorefrontIcon color="primary" fontSize="large" />
-                  <Box>
-                    <Typography variant="subtitle2" color="textSecondary">Available Tables</Typography>
-                    <Typography variant="h5" color="primary">{stats.availableTables}</Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        )}
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Card sx={{ boxShadow: 3, width: '100%' }}>
-            <ButtonBase onClick={() => goTo('tasks')} sx={{ width: '100%', display: 'block', textAlign: 'left' }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <ClipboardDocumentListIcon color="warning" fontSize="large" />
-                  <Box>
-                    <Typography variant="subtitle2" color="textSecondary">Pending Tasks</Typography>
-                    <Typography variant="h5" color="warning.main">{stats.pendingTasks}</Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </ButtonBase>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4} lg={2}>
-          <Card sx={{ boxShadow: 3, width: '100%' }}>
-            <ButtonBase onClick={() => goTo('inventory')} sx={{ width: '100%', display: 'block', textAlign: 'left' }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <ExclamationTriangleIcon color="error" fontSize="large" />
-                  <Box>
-                    <Typography variant="subtitle2" color="textSecondary">Low Stock Items</Typography>
-                    <Typography variant="h5" color="error.main">{stats.lowStockItems}</Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </ButtonBase>
-          </Card>
-        </Grid>
+      <Typography variant="caption" color="text.secondary">
+        Last updated {new Date().toLocaleTimeString()}
+      </Typography>
+
+      <Grid container spacing={2} sx={{ mt: 2 }}>
+        {[
+          {
+            title: "Today's Sales",
+            value: `₹${stats.todaySales}`,
+            icon: <CurrencyRupeeIcon />,
+            color: 'primary',
+            go: 'billing',
+          },
+          {
+            title: 'Orders',
+            value: stats.todayOrders,
+            icon: <ShoppingCartIcon />,
+            go: 'billing',
+          },
+          {
+            title: 'Active Staff',
+            value: stats.activeStaff,
+            icon: <GroupIcon />,
+            go: 'staff',
+          },
+          establishmentType !== 'QSR' && {
+            title: 'Available Tables',
+            value: stats.availableTables,
+            icon: <StoreIcon />,
+            go: '',
+          },
+          {
+            title: 'Pending Tasks',
+            value: stats.pendingTasks,
+            icon: <AssignmentIcon />,
+            go: 'tasks',
+          },
+          {
+            title: 'Low Stock Items',
+            value: stats.lowStockItems,
+            icon: <WarningIcon color="error" />,
+            go: 'inventory',
+          },
+        ]
+          .filter(Boolean)
+          .map(
+            (item: any, idx) =>
+              item && (
+                <Grid key={idx} size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+                  <ButtonBase
+                    sx={{ width: '100%', textAlign: 'left', borderRadius: 2 }}
+                    onClick={() => item.go && goTo(item.go)}
+                  >
+                    <Card sx={{ width: '100%' }}>
+                      <CardContent>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          {item.icon}
+                          <Typography variant="subtitle2">{item.title}</Typography>
+                        </Box>
+                        <Typography fontWeight="bold">{item.value}</Typography>
+                      </CardContent>
+                    </Card>
+                  </ButtonBase>
+                </Grid>
+              )
+          )}
       </Grid>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales Trend (Last 7 Days)</h3>
-          <ResponsiveContainer width="100%" height={300}>
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+          Sales Trend (7 Days)
+        </Typography>
+        <Box sx={{ height: 220 }}>
+          <ResponsiveContainer width="100%" height="100%">
             <LineChart data={salesChart}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" tickFormatter={(date) => new Date(date).toLocaleDateString()} />
+              <XAxis dataKey="date" />
               <YAxis />
-              <Tooltip 
-                formatter={(value) => [`₹${value}`, 'Sales']}
-                labelFormatter={(date) => new Date(date).toLocaleDateString()}
-              />
-              <Line type="monotone" dataKey="sales" stroke="#3b82f6" strokeWidth={2} />
+              <Tooltip />
+              <Line type="monotone" dataKey="sales" stroke="#1976d2" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </Box>
+      </Box>
 
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Orders</h3>
-          <ResponsiveContainer width="100%" height={300}>
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+          Orders per Day
+        </Typography>
+        <Box sx={{ height: 220 }}>
+          <ResponsiveContainer width="100%" height="100%">
             <BarChart data={ordersChart}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" tickFormatter={(date) => new Date(date).toLocaleDateString()} />
+              <XAxis dataKey="date" />
               <YAxis />
-              <Tooltip 
-                formatter={(value) => [value, 'Orders']}
-                labelFormatter={(date) => new Date(date).toLocaleDateString()}
-              />
-              <Bar dataKey="orders" fill="#10b981" />
+              <Tooltip />
+              <Bar dataKey="orders" fill="#43a047" />
             </BarChart>
           </ResponsiveContainer>
-        </div>
-      </div>
+        </Box>
+      </Box>
 
-      {/* Recent Activity */}
-      <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Tasks</h3>
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+          Recent Tasks
+        </Typography>
         <Table columns={taskColumns} data={recentTasks} />
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
