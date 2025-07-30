@@ -20,7 +20,7 @@ export default defineConfig({
       polyfill: true,
     },
     // Optimize build for production
-    minify: 'terser',
+    minify: 'esbuild',
     sourcemap: false,
     rollupOptions: {
       output: {
