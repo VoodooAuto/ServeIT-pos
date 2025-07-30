@@ -1,0 +1,52 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run lint)",
+      "Bash(npm start)",
+      "Bash(npm run:*)",
+      "Bash(rm:*)",
+      "Bash(chmod:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(dir:*)",
+      "WebFetch(domain:extraordinary-longma-df0253.netlify.app)",
+      "Bash(uv:*)",
+      "Bash(export:*)",
+      "Bash(npx:*)",
+      "Bash(\"C:/Users/Sahil Sahni/.local/bin/uvx.exe\" --from git+https://github.com/oraios/serena serena-mcp-server --help)",
+      "Bash(node:*)",
+      "Bash(where npx)",
+      "Bash(\"C:\\Program Files\\nodejs\\npx.cmd\" @playwright/mcp --help)",
+      "Bash(cmd //c \"\"\"C:\\Program Files\\nodejs\\npx.cmd\"\" @playwright/mcp --help\")",
+      "Bash(cmd /c \"npx @playwright/mcp --help\")",
+      "Bash(cmd:*)",
+      "Bash(claude mcp remove:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)",
+      "Bash(pkill:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_close",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)"
+    ],
+    "deny": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "playwright",
+    "serena"
+  ]
+}

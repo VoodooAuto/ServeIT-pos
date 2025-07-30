@@ -1,49 +1,108 @@
 {
-  "name": "project",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.1",
-    "@heroicons/react": "^2.2.0",
-    "@mui/icons-material": "^7.2.0",
-    "@mui/material": "^7.2.0",
-    "clsx": "^2.1.1",
-    "date-fns": "^4.1.0",
-    "firebase": "^12.0.0",
-    "lucide-react": "^0.525.0",
-    "papaparse": "^5.5.3",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "recharts": "^3.1.0",
-    "tailwind-merge": "^3.3.1"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.30.1",
-    "@types/node": "^24.0.14",
-    "@types/papaparse": "^5.3.16",
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
-    "@vitejs/plugin-react": "^4.6.0",
-    "autoprefixer": "^10.4.21",
-    "eslint": "^9.30.1",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.20",
-    "globals": "^16.3.0",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^3.3.3",
-    "typescript": "~5.8.3",
-    "typescript-eslint": "^8.35.1",
-    "vite": "^7.0.4"
-  },
-  "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "^4.9.2"
-  }
+    "name": "serveit-pos",
+    "private": true,
+    "version": "1.0.0",
+    "description": "A comprehensive Point of Sale system for restaurants with real-time order management, payment processing, and analytics.",
+    "type": "module",
+    "scripts": {
+        "dev": "vite --host",
+        "build": "vite build",
+        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+        "lint:fix": "eslint . --ext ts,tsx --fix",
+        "preview": "vite preview",
+        "type-check": "tsc --noEmit",
+        "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+        "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:ui": "vitest --ui",
+        "test:coverage": "vitest run --coverage",
+        "clean": "rm -rf dist node_modules/.vite",
+        "docker:build": "docker build -t serveit-pos .",
+        "docker:run": "docker run -p 8080:8080 serveit-pos",
+        "docker:dev": "docker-compose --profile dev up",
+        "docker:prod": "docker-compose --profile production up -d",
+        "firebase:deploy": "firebase deploy",
+        "firebase:emulators": "firebase emulators:start",
+        "analyze": "npm run build && npx vite-bundle-analyzer dist/assets/*.js",
+        "prepare": "husky install || echo 'Husky not installed'",
+        "postinstall": "patch-package || echo 'patch-package not installed'"
+    },
+    "keywords": [
+        "pos",
+        "restaurant",
+        "point-of-sale",
+        "order-management",
+        "payment-processing",
+        "inventory",
+        "react",
+        "typescript",
+        "firebase",
+        "saas",
+        "multi-tenant"
+    ],
+    "author": {
+        "name": "ServeIT Team",
+        "email": "support@serveit-pos.com",
+        "url": "https://serveit-pos.com"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/yourusername/serveit-pos.git"
+    },
+    "bugs": {
+        "url": "https://github.com/yourusername/serveit-pos/issues"
+    },
+    "homepage": "https://serveit-pos.com",
+    "engines": {
+        "node": ">=18.0.0",
+        "npm": ">=8.0.0"
+    },
+    "dependencies": {
+        "@emotion/react": "^11.14.0",
+        "@emotion/styled": "^11.14.1",
+        "@heroicons/react": "^2.2.0",
+        "@mui/icons-material": "^7.2.0",
+        "@mui/material": "^7.2.0",
+        "clsx": "^2.1.1",
+        "date-fns": "^4.1.0",
+        "dompurify": "^3.2.6",
+        "firebase": "^12.0.0",
+        "lucide-react": "^0.525.0",
+        "papaparse": "^5.5.3",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0",
+        "recharts": "^3.1.0",
+        "tailwind-merge": "^3.3.1",
+        "zod": "^4.0.5"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.30.1",
+        "@testing-library/jest-dom": "^6.6.4",
+        "@testing-library/react": "^16.3.0",
+        "@testing-library/user-event": "^14.6.1",
+        "@types/dompurify": "^3.0.5",
+        "@types/node": "^24.0.14",
+        "@types/papaparse": "^5.3.16",
+        "@types/react": "^19.1.8",
+        "@types/react-dom": "^19.1.6",
+        "@vitejs/plugin-react": "^4.6.0",
+        "autoprefixer": "^10.4.21",
+        "eslint": "^9.30.1",
+        "eslint-plugin-react-hooks": "^5.2.0",
+        "eslint-plugin-react-refresh": "^0.4.20",
+        "firebase-admin": "^13.4.0",
+        "globals": "^16.3.0",
+        "jsdom": "^26.1.0",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^3.3.3",
+        "typescript": "~5.8.3",
+        "typescript-eslint": "^8.35.1",
+        "vite": "^7.0.4",
+        "vitest": "^3.2.4"
+    },
+    "optionalDependencies": {
+        "@rollup/rollup-linux-x64-gnu": "^4.9.2"
+    }
 }
